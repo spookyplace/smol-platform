@@ -15,7 +15,7 @@ KUBE_CONTEXT := k3d-$(CLUSTER)
 
 FLOCI_COMPOSE := docker compose -f floci/compose.yaml
 # Chart pins repeated in gitops/apps/<app>.yaml, because ArgoCD can't read versions.env. Pairs of app:VARIABLE.
-PINNED_APPS := argocd:ARGOCD_CHART_VERSION cloudnative-pg:CNPG_CHART_VERSION
+PINNED_APPS := argocd:ARGOCD_CHART_VERSION cloudnative-pg:CNPG_CHART_VERSION backstage:BACKSTAGE_CHART_VERSION
 pin_app = $(word 1,$(subst :, ,$1))
 pin_var = $(word 2,$(subst :, ,$1))
 ARGOCD_CHART := argo-cd --repo https://argoproj.github.io/argo-helm --version $(ARGOCD_CHART_VERSION)

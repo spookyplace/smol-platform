@@ -1,4 +1,4 @@
-# Backstage (ADR-0003), a platform app. For now only its database; the chart is added as a second source next.
+# Backstage (ADR-0003), a platform app: the chart, its values, and its CNPG database (sync wave -1).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -6,10 +6,22 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/spookyplace/smol-platform.git
-    targetRevision: main
-    path: gitops/backstage/manifests
+  sources:
+    - repoURL: https://backstage.github.io/charts
+      chart: backstage
+      # Must equal BACKSTAGE_CHART_VERSION in versions.env
+      targetRevision: 2.10.2
+      helm:
+        releaseName: backstage
+        valueFiles:
+          - $values/gitops/backstage/values.yaml
+    - repoURL: https://github.com/spookyplace/smol-platform.git
+      targetRevision: main
+      ref: values
+    # Plain manifests: the Postgres Cluster
+    - repoURL: https://github.com/spookyplace/smol-platform.git
+      targetRevision: main
+      path: gitops/backstage/manifests
   destination:
     # Platform app: ArgoCD's own cluster (ADR-0002)
     server: https://kubernetes.default.svc
