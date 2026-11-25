@@ -48,8 +48,30 @@ _TODO_
 
 ## 4. Phase "done" criteria
 
-_TODO: one check per phase, traced to D1–D5 and O1–O5._
+| Phase | Done when | Traces to | Status |
+|---|---|---|---|
+| 1 Foundation | `make down && make up` on a machine with the README prerequisites → Backstage serving the catalog, no manual steps beyond `local.env` | O1 | ✓ 2026-11-25: ~4.5 min |
+| | A hand edit to a managed resource is reverted by ArgoCD | O2 | ✓ ~2 s (child app) |
+| | ArgoCD, CNPG and Backstage are installed and upgraded only from git | O2, O4 | ✓ |
+| 2 Golden path | "Create service" → repo with CI (Trivy, Cosign, SBOM), CODEOWNERS and branch protection → healthy pod in dev, < 15 min | D1, O6 | |
+| | GitHub sign-in; a user outside the owning team can't run its template | O7 | |
+| | `team-catalog` can't deploy into `team-payments` (AppProject) or reach it over the network | O3 | |
+| 3 Self-service infra | Database or bucket requested from the portal, ready without cloud credentials | D2, O6 | |
+| | PR → preview URL < 5 min, removed on merge | D3 | |
+| | Same Composition works with the `local` and `aws` ProviderConfig (not demoed) | O8 | |
+| 4 Guardrails and insight | Unsigned image and privileged pod rejected at admission; policy name + fix hint shown in the portal | D5, O5 | |
+| | New service gets a dashboard and scorecard automatically | D4 | |
+| 5 Polish | Demo video covering §2; ADRs current; EKS module applies cleanly | all | |
 
 ## 5. Risks
 
-_TODO: start with Floci coverage (RDS → CloudNativePG fallback) and Floci maturity (pin version, one endpoint override)._
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Floci service coverage (RDS, IAM, EKS) | Phase 3 claims fail locally | RDS: CloudNativePG fallback, already running. EKS real mode exists in 2.4 but needs the Docker socket; decide in Phase 3 |
+| Floci maturity | Breaking changes, bugs | Pinned version; endpoint override in one place |
+| Fresh upstream releases | Regressions | Pin policy in `versions.env` (minor ≥ 14 days, newest patch). Exception: Backstage 1.57 for Node 26 (ADR-0003) |
+| Upstream defaults that don't fit together | Startup failures (e.g. Backstage chart vs. `create-app` config) | Smoke test with the deployment's real config layers; decision log |
+| Third-party images change terms | Unpullable or paid images (Bitnami) | Avoid Bitnami subcharts; pin digests |
+| GitHub free-tier limits (GHCR, Actions) | Builds or pulls blocked | Public packages are free; add image retention (Phase 2) |
+| Laptop resources | Cluster too slow or OOM with Istio, Prometheus, Crossplane | Resource requests on every component; measure each phase |
+| Single maintainer | No required reviews on `main` | Rulesets, CI checks; documented in `security.md` |
