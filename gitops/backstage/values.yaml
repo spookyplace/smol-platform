@@ -7,8 +7,8 @@ backstage:
     repository: spookyplace/smol-backstage
     # The smol-backstage commit CI built it from (for humans); the digest is what's pulled (the chart prefers it).
     # A CI re-run on the same commit overwrites the tag, never the digest. Bump both together.
-    tag: 03be8f7122223408305b43e56914ddb7a11f7c99
-    digest: sha256:b5c41df71986c8ae73ba475ae16074a799f880ce4fc198ce1ab08aae7bff2490
+    tag: 0fc3ca20f5c5cb2553bafcc403db9cf066cbde09
+    digest: sha256:b7241af154e23dda512a442a70afc93b8fae220f5492161986885f807cfeab8d
 
   # The image's own config files; the chart appends --config for the appConfig ConfigMap after these
   args: ["--config", "app-config.yaml", "--config", "app-config.production.yaml"]

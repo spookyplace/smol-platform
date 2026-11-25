@@ -32,3 +32,9 @@ Things that surprised me while building Smol, and what I learned.
 
 - **Deleting a repo kills GitHub's redirect from its old URL.** The live `root` still pointed at the old owner, and nothing in git managed it, so it couldn't fetch its own fix. `root` now lives in `gitops/apps/` and manages itself (ADR-0002).
 - **An app's drift on its own spec isn't healed immediately.** The controller drops watch events for the app's own object (`isSelfReferencedApp`, `controller/appcontroller.go` in v3.6.3) to avoid a refresh loop. A hand edit to `root` was reverted only after the next periodic reconcile (`timeout.reconciliation` 120 s + up to 60 s jitter) or a manual refresh. Child apps heal within seconds.
+
+## 2026-11-25: Backstage chart vs. create-app config
+
+- **The backstage chart and the `create-app` 1.57 template are incompatible out of the box.** The chart always sets `APP_CONFIG_backend_listen_port` (an object on the env layer); the template's `app-config.production.yaml` has `listen: ':7007'` (a string). Backstage won't merge an object over a string: `Invalid type in config for key 'backend.listen' … got string, wanted object`, crash on startup. Fix: object form (`listen: {port: 7007}`) in the image.
+- **My smoke test missed it** because it loaded only `app-config.yaml`. A real check loads the same config layers the deployment uses, including env (`loadConfig` from `@backstage/config-loader`; a hand-built `ConfigReader` didn't reproduce it).
+- **GHCR packages in an org are private by default**, unlike the first one under a personal account, and making one public needs the org's "Package creation: Public" setting first. Public is one-way.
