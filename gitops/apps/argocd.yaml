@@ -17,7 +17,7 @@ spec:
         releaseName: argocd
         valueFiles:
           - $values/gitops/argocd/values.yaml
-    - repoURL: https://github.com/YArzumanyan/smol-platform.git
+    - repoURL: https://github.com/spookyplace/smol-platform.git
       targetRevision: main
       ref: values
   destination:
