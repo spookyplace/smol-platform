@@ -2,16 +2,28 @@ include versions.env
 export
 
 CLUSTER := smol
+# Every kubectl/helm call names this context, so a different current context (say, a work cluster) is never touched
+KUBE_CONTEXT := k3d-$(CLUSTER)
 
 .DEFAULT_GOAL := help
+# Targets depend on order (doctor before cluster, Floci before the cluster is deleted); never run them in parallel
+.NOTPARALLEL:
 
-.PHONY: help doctor cluster cluster-down floci floci-down argocd argocd-password
+.PHONY: help up down doctor cluster cluster-down floci floci-down argocd argocd-password
 
 FLOCI_COMPOSE := docker compose -f floci/compose.yaml
 ARGOCD_CHART := argo-cd --repo https://argoproj.github.io/argo-helm --version $(ARGOCD_CHART_VERSION)
 
 help: ## Show available targets
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
+
+up: doctor floci argocd ## Bring up everything: checks, cluster, Floci, ArgoCD (safe to re-run)
+	@echo
+	@echo "Smol is up. ArgoCD UI:"
+	@echo "  kubectl --context $(KUBE_CONTEXT) -n argocd port-forward svc/argocd-server 8081:443"
+	@echo "  https://localhost:8081  user: admin  password: make argocd-password"
+
+down: floci-down cluster-down ## Remove everything (Floci first: it is attached to the cluster's network)
 
 doctor: ## Check installed tools against versions.env (installs nothing)
 	@./scripts/doctor.sh
@@ -38,10 +50,10 @@ argocd: cluster ## Install ArgoCD (Helm) and apply the root app; safe to re-run 
 	  { echo "gitops/apps/argocd.yaml chart version != ARGOCD_CHART_VERSION ($(ARGOCD_CHART_VERSION))"; exit 1; }
 	@helm show chart $(ARGOCD_CHART) | grep -qx 'appVersion: v$(ARGOCD_VERSION)' || \
 	  { echo "chart $(ARGOCD_CHART_VERSION) is not ArgoCD v$(ARGOCD_VERSION)"; exit 1; }
-	helm upgrade --install argocd $(ARGOCD_CHART) \
+	helm upgrade --install argocd $(ARGOCD_CHART) --kube-context $(KUBE_CONTEXT) \
 	  --namespace argocd --create-namespace \
 	  --values gitops/argocd/values.yaml --wait --timeout 5m
-	kubectl apply -f gitops/root.yaml
+	kubectl --context $(KUBE_CONTEXT) apply -f gitops/root.yaml
 
 argocd-password: ## Print the initial admin password
-	@kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
+	@kubectl --context $(KUBE_CONTEXT) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo

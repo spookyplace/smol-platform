@@ -24,6 +24,16 @@ Node 25+ no longer bundles Corepack, so it is installed separately. Yarn itself 
 
 Check your setup with `make doctor`. It checks every rule, installs nothing, and exits non-zero if a tool needed now is missing or wrong. Tools for later phases are reported but never fail the run.
 
+## Run it
+
+```bash
+make up      # doctor, k3d cluster, Floci, ArgoCD + root app. Safe to re-run.
+make down    # removes Floci and the cluster
+make help    # all targets
+```
+
+Every `kubectl`/`helm` call targets the `k3d-smol` context, whatever your current context is. After `make up`, ArgoCD syncs everything else from `main` on GitHub, so local changes apply only once pushed ([ADR-0002](docs/adr/0002-argocd-bootstrap.md)).
+
 ## Repository settings
 
 Branch rules are kept as code in [`.github/rulesets/`](.github/rulesets/). To create one on a fresh repo (to change an existing one, use `PUT .../rulesets/<id>`):
