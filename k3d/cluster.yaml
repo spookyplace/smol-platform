@@ -1,0 +1,37 @@
+# k3d cluster for Smol. Created by `make cluster`; see ADR-0001.
+# Schema: https://k3d.io/stable/usage/configfile/ (v1alpha5)
+# ${K3S_IMAGE} is expanded by k3d from the environment; `make` exports it from versions.env.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: smol
+servers: 1
+# 2 agents: real multi-node scheduling, and per-node DaemonSets (Istio ztunnel) behave like a real cluster
+agents: 2
+image: ${K3S_IMAGE}
+# Fixed network name so Floci (outside the cluster) can join it
+network: smol
+kubeAPI:
+  hostIP: "127.0.0.1"
+  hostPort: "6445"
+ports:
+  # Ingress (Istio Gateway from Phase 2), localhost only
+  - port: 127.0.0.1:8080:80
+    nodeFilters: [loadbalancer]
+  - port: 127.0.0.1:8443:443
+    nodeFilters: [loadbalancer]
+registries:
+  # Local registry for images built on this machine (for example Backstage), localhost only
+  create:
+    name: smol-registry.localhost
+    host: "127.0.0.1"
+    hostPort: "5111"
+options:
+  k3s:
+    extraArgs:
+      # Istio Gateway (Gateway API) replaces Traefik as ingress
+      - arg: --disable=traefik
+        nodeFilters: ["server:*"]
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true

@@ -1,0 +1,26 @@
+# Floci (local AWS emulator) for Smol. Started by `make floci`; see ADR-0001.
+# Docs: https://github.com/floci-io/floci/tree/2.4.0/docs/configuration
+name: smol-floci
+
+services:
+  floci:
+    # Pinned in versions.env; `make` exports it. Fails loudly if unset.
+    image: ${FLOCI_IMAGE:?FLOCI_IMAGE not set (run via make)}
+    container_name: floci
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      # URLs Floci returns (e.g. SQS QueueUrl) use this name, which resolves on the smol network
+      FLOCI_HOSTNAME: floci
+      # State lives as long as the container; Crossplane re-creates resources after a restart
+      FLOCI_STORAGE_MODE: memory
+    # No Docker socket: S3 and the other API-only services don't need it.
+    # RDS, Lambda, ElastiCache and the web console do; added in Phase 3 with its own ADR.
+    networks: [smol]
+    # Healthcheck comes from the image (/usr/local/bin/healthcheck.sh); `up --wait` uses it.
+    # The image has no curl/wget, so don't override it.
+
+networks:
+  smol:
+    # Created by k3d (k3d/cluster.yaml `network: smol`)
+    external: true
