@@ -1,0 +1,30 @@
+# Postgres for Backstage (ADR-0003), run by the CloudNativePG operator.
+# CNPG generates the Secret `backstage-db-app` (username, password, host, port, dbname, uri); nothing secret is in git.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: backstage-db
+  namespace: backstage
+  annotations:
+    # Before Backstage (wave 0). ArgoCD has a health check for CNPG Clusters, so wave 0 waits until this is Healthy.
+    argocd.argoproj.io/sync-wave: "-1"
+    # This is the database: never prune it when removed from git, never delete it with the Application.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  instances: 1
+  # Pinned, not the operator default (which is a deprecated `system` image and changes with operator upgrades).
+  # `minimal`: no backup tooling, which is out of scope locally. Bump tag and digest together.
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-minimal-trixie@sha256:c8caac9817d2b5e5e66297a3ccf86d9fcbd68f097aa6cc00161d83f9635e88cc
+  bootstrap:
+    initdb:
+      # One database; Backstage uses pluginDivisionMode: schema, so its user needs no CREATEDB
+      database: backstage
+      owner: backstage
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi

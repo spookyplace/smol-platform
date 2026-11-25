@@ -1,0 +1,31 @@
+# Backstage (ADR-0003), a platform app. For now only its database; the chart is added as a second source next.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backstage
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/spookyplace/smol-platform.git
+    targetRevision: main
+    path: gitops/backstage/manifests
+  destination:
+    # Platform app: ArgoCD's own cluster (ADR-0002)
+    server: https://kubernetes.default.svc
+    namespace: backstage
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # The namespace usually exists already (`make backstage-secrets` creates it for the GitHub App Secret)
+      - CreateNamespace=true
+    # On a fresh cluster, root creates this app and cloudnative-pg together, so the Cluster CRD may not exist yet.
+    # Waves can't order sibling apps (ArgoCD doesn't assess Application health by default); retrying until it exists can.
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
