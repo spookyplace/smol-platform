@@ -26,8 +26,10 @@ Check your setup with `make doctor`. It checks every rule, installs nothing, and
 
 ## Run it
 
+Backstage needs a GitHub App ([ADR-0003](docs/adr/0003-backstage-deployment.md)). Copy `local.env.example` to `local.env` (gitignored) and fill in the App ID, client ID and the paths to its private key and client secret. Keep those files outside the repo, mode 600.
+
 ```bash
-make up      # doctor, k3d cluster, Floci, ArgoCD + root app. Safe to re-run.
+make up      # doctor, k3d cluster, Floci, ArgoCD + root app, Backstage secrets. Safe to re-run.
 make down    # removes Floci and the cluster
 make help    # all targets
 ```

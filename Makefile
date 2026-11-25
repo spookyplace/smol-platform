@@ -1,4 +1,6 @@
 include versions.env
+# Machine-specific values and paths to secret files; optional so `make help`/`doctor` work without it
+-include local.env
 export
 
 CLUSTER := smol
@@ -9,7 +11,7 @@ KUBE_CONTEXT := k3d-$(CLUSTER)
 # Targets depend on order (doctor before cluster, Floci before the cluster is deleted); never run them in parallel
 .NOTPARALLEL:
 
-.PHONY: help up down doctor check-pins cluster cluster-down floci floci-down argocd argocd-password
+.PHONY: help up down doctor check-pins cluster cluster-down floci floci-down argocd argocd-password backstage-secrets
 
 FLOCI_COMPOSE := docker compose -f floci/compose.yaml
 # Chart pins repeated in gitops/apps/<app>.yaml, because ArgoCD can't read versions.env. Pairs of app:VARIABLE.
@@ -19,9 +21,9 @@ pin_var = $(word 2,$(subst :, ,$1))
 ARGOCD_CHART := argo-cd --repo https://argoproj.github.io/argo-helm --version $(ARGOCD_CHART_VERSION)
 
 help: ## Show available targets
-	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
+	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-19s %s\n", $$1, $$2}'
 
-up: doctor floci argocd ## Bring up everything: checks, cluster, Floci, ArgoCD (safe to re-run)
+up: doctor floci argocd backstage-secrets ## Bring up everything: checks, cluster, Floci, ArgoCD, secrets (safe to re-run)
 	@echo
 	@echo "Smol is up. ArgoCD UI:"
 	@echo "  kubectl --context $(KUBE_CONTEXT) -n argocd port-forward svc/argocd-server 8081:443"
@@ -64,3 +66,24 @@ argocd: cluster check-pins ## Install ArgoCD (Helm) and apply the root app; safe
 
 argocd-password: ## Print the initial admin password
 	@kubectl --context $(KUBE_CONTEXT) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
+
+# Secrets never come from git (O6). Built from files named in local.env: --from-file, so secret values
+# never appear in process arguments. Server-side apply, so no last-applied annotation copies the data.
+backstage-secrets: cluster ## Create the Backstage GitHub App Secret from local.env (ADR-0003)
+	@test -f local.env || { echo "local.env missing: copy local.env.example and fill it in"; exit 1; }
+	@test -n "$(GITHUB_APP_ID)" -a -n "$(GITHUB_APP_CLIENT_ID)" || \
+	  { echo "local.env: GITHUB_APP_ID and GITHUB_APP_CLIENT_ID must be set"; exit 1; }
+	@test -r "$(GITHUB_APP_PRIVATE_KEY_FILE)" -a -r "$(GITHUB_APP_CLIENT_SECRET_FILE)" || \
+	  { echo "local.env: GITHUB_APP_PRIVATE_KEY_FILE and GITHUB_APP_CLIENT_SECRET_FILE must be readable files"; exit 1; }
+	@# --from-file copies bytes exactly; a trailing newline would become part of the OAuth client secret
+	@! tail -c1 "$(GITHUB_APP_CLIENT_SECRET_FILE)" | od -An -tx1 | grep -q 0a || \
+	  { echo "$(GITHUB_APP_CLIENT_SECRET_FILE) ends with a newline; remove it: truncate -s -1 $(GITHUB_APP_CLIENT_SECRET_FILE)"; exit 1; }
+	@kubectl --context $(KUBE_CONTEXT) create namespace backstage --dry-run=client -o yaml | \
+	  kubectl --context $(KUBE_CONTEXT) apply --server-side --field-manager=make -f - >/dev/null
+	@kubectl --context $(KUBE_CONTEXT) -n backstage create secret generic backstage-github-app \
+	  --from-literal=GITHUB_APP_ID=$(GITHUB_APP_ID) \
+	  --from-literal=GITHUB_APP_CLIENT_ID=$(GITHUB_APP_CLIENT_ID) \
+	  --from-file=GITHUB_APP_PRIVATE_KEY=$(GITHUB_APP_PRIVATE_KEY_FILE) \
+	  --from-file=GITHUB_APP_CLIENT_SECRET=$(GITHUB_APP_CLIENT_SECRET_FILE) \
+	  --dry-run=client -o yaml | \
+	  kubectl --context $(KUBE_CONTEXT) apply --server-side --field-manager=make -f -

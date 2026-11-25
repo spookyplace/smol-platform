@@ -27,3 +27,8 @@ Things that surprised me while building Smol, and what I learned.
 - **CNPG's CRDs need server-side apply.** `clusters` (462 KiB) and `poolers` (662 KiB) exceed the 256 KiB annotation limit that client-side apply hits (`last-applied-configuration`). Upstream installs with `kubectl apply --server-side`; the app sets `ServerSideApply=true`.
 - **The operator injects `caBundle` into its webhook configurations, and ArgoCD doesn't fight it.** The chart doesn't render `caBundle`, so under server-side apply the field is owned by the operator (`manager`, Update), not `argocd-controller`; selfHeal leaves it alone. No `ignoreDifferences` needed. Charts that render `caBundle: ""` would need one.
 - **The mutating webhook defaults `spec.imageName`** (operator 1.30.2: `postgresql:18.7-system-trixie`). Pin the image in each `Cluster` so a CNPG upgrade doesn't silently change Postgres.
+
+## 2026-11-25: root managing itself
+
+- **Deleting a repo kills GitHub's redirect from its old URL.** The live `root` still pointed at the old owner, and nothing in git managed it, so it couldn't fetch its own fix. `root` now lives in `gitops/apps/` and manages itself (ADR-0002).
+- **An app's drift on its own spec isn't healed immediately.** The controller drops watch events for the app's own object (`isSelfReferencedApp`, `controller/appcontroller.go` in v3.6.3) to avoid a refresh loop. A hand edit to `root` was reverted only after the next periodic reconcile (`timeout.reconciliation` 120 s + up to 60 s jitter) or a manual refresh. Child apps heal within seconds.
