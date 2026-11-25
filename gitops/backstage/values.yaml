@@ -88,8 +88,16 @@ backstage:
           # Phase 1 only (ADR-0003): local cluster, port-forward access. Replaced by GitHub sign-in in Phase 2 (O7).
           dangerouslyAllowOutsideDevelopment: true
     catalog:
-      # Replaces the image's example locations. Read through the GitHub App, which proves the integration works.
+      # Replaces the image's example locations. Read through the GitHub App.
+      # Each repo describes itself in its catalog-info.yaml; the org (teams, people) lives in smol-platform.
       locations:
+        - type: url
+          target: https://github.com/spookyplace/smol-platform/blob/main/catalog/org.yaml
+          # Only people and teams from this file
+          rules:
+            - allow: [User, Group]
+        - type: url
+          target: https://github.com/spookyplace/smol-platform/blob/main/catalog-info.yaml
         - type: url
           target: https://github.com/spookyplace/smol-backstage/blob/main/catalog-info.yaml
 

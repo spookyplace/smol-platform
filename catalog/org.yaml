@@ -1,0 +1,61 @@
+# Smol's organisation for the Backstage catalog: teams and people (charter §1.1).
+# Loaded with rules allowing only User and Group (gitops/backstage/values.yaml).
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: smol
+  description: The fictional company running Smol
+spec:
+  type: organization
+  children: [platform-team, team-payments, team-catalog]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-team
+  description: Builds and runs Smol
+spec:
+  type: team
+  parent: smol
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: team-payments
+  description: Product team; Dana's team
+spec:
+  type: team
+  parent: smol
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: team-catalog
+  description: Product team; the second tenant for isolation demos (O3)
+spec:
+  type: team
+  parent: smol
+  children: []
+---
+# Real person. The name matches the GitHub login, which GitHub sign-in (Phase 2) resolves to this entity.
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: yarzumanyan
+spec:
+  profile:
+    displayName: Yervand Arzumanyan
+  memberOf: [platform-team]
+---
+# Fictional persona (charter §1.1)
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: dana
+  description: Backend developer, the persona Smol is built for
+spec:
+  profile:
+    displayName: Dana
+  memberOf: [team-payments]

@@ -1,0 +1,21 @@
+# Backstage catalog entry for this repo, plus the system it belongs to.
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: smol
+  description: Smol, a small internal developer platform
+spec:
+  owner: group:platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: smol-platform
+  description: Bootstrap, GitOps (ArgoCD), Crossplane and Kyverno for Smol
+  annotations:
+    github.com/project-slug: spookyplace/smol-platform
+spec:
+  type: infrastructure
+  lifecycle: experimental
+  owner: group:platform-team
+  system: smol
