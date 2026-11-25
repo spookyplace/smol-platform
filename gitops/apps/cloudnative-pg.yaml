@@ -1,0 +1,29 @@
+# CloudNativePG operator (ADR-0003): Postgres for Backstage now, the RDS fallback in Phase 3.
+# The operator is a platform app; Postgres `Cluster`s are created by the apps that need them.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudnative-pg
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://cloudnative-pg.github.io/charts
+    chart: cloudnative-pg
+    # Must equal CNPG_CHART_VERSION in versions.env (operator 1.30.2)
+    targetRevision: 0.29.2
+    helm:
+      releaseName: cnpg
+  destination:
+    # Platform app: ArgoCD's own cluster (ADR-0002)
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRDs (clusters 462 KiB, poolers 662 KiB) exceed the 256 KiB annotation limit of client-side apply.
+      # Upstream installs with `kubectl apply --server-side` too.
+      - ServerSideApply=true

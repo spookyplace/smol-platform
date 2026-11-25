@@ -21,3 +21,9 @@ Things that surprised me while building Smol, and what I learned.
 - **Backstage 1.56 supports Node 22/24 only; 1.57.0 is the first with 24/26.** `create-app@0.9.3` refuses Node 26. Took 1.57.1 as a pin-policy exception (ADR-0003).
 - **`create-app@0.9.4` generates 1.57.0, not the latest patch.** `yarn backstage-cli versions:bump --release 1.57.1` afterwards.
 - **The 1.57 template still uses a `node:24` base image**, and Node 25+ images ship no `yarn` or `corepack`. The Dockerfile now uses `node:26` (digest-pinned) and runs the Yarn release committed in `.yarn/releases/`.
+
+## 2026-11-25: CloudNativePG under ArgoCD
+
+- **CNPG's CRDs need server-side apply.** `clusters` (462 KiB) and `poolers` (662 KiB) exceed the 256 KiB annotation limit that client-side apply hits (`last-applied-configuration`). Upstream installs with `kubectl apply --server-side`; the app sets `ServerSideApply=true`.
+- **The operator injects `caBundle` into its webhook configurations, and ArgoCD doesn't fight it.** The chart doesn't render `caBundle`, so under server-side apply the field is owned by the operator (`manager`, Update), not `argocd-controller`; selfHeal leaves it alone. No `ignoreDifferences` needed. Charts that render `caBundle: ""` would need one.
+- **The mutating webhook defaults `spec.imageName`** (operator 1.30.2: `postgresql:18.7-system-trixie`). Pin the image in each `Cluster` so a CNPG upgrade doesn't silently change Postgres.
