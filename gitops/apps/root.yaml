@@ -1,4 +1,5 @@
-# Root of the app-of-apps (ADR-0002). Applied once by `make argocd`; every file in gitops/apps/ is a child Application.
+# Root of the app-of-apps (ADR-0002). Every file in gitops/apps/ is a child Application, this one included:
+# root manages itself, so changes here sync from git. `make argocd` applies it only to bootstrap or recover.
 # No resources-finalizer: deleting this Application leaves its children (and ArgoCD) running.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

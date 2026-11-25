@@ -60,7 +60,7 @@ argocd: cluster check-pins ## Install ArgoCD (Helm) and apply the root app; safe
 	helm upgrade --install argocd $(ARGOCD_CHART) --kube-context $(KUBE_CONTEXT) \
 	  --namespace argocd --create-namespace \
 	  --values gitops/argocd/values.yaml --wait --timeout 5m
-	kubectl --context $(KUBE_CONTEXT) apply -f gitops/root.yaml
+	kubectl --context $(KUBE_CONTEXT) apply -f gitops/apps/root.yaml
 
 argocd-password: ## Print the initial admin password
 	@kubectl --context $(KUBE_CONTEXT) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo

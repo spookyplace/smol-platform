@@ -31,7 +31,7 @@
 ## Decision
 
 - **Install:** `make argocd` runs `helm upgrade --install` of `argo/argo-cd`, pinned by `ARGOCD_CHART_VERSION` (app version `ARGOCD_VERSION`), with `gitops/argocd/values.yaml`. Idempotent; it is also the recovery path.
-- **Root app:** `make argocd` then applies one `Application` (`gitops/root.yaml`) pointing at `gitops/apps/` on `main` of `smol-platform`. Everything else, ArgoCD included, is a child `Application` there (app-of-apps).
+- **Root app:** `make argocd` then applies one `Application` (`gitops/apps/root.yaml`) pointing at `gitops/apps/` on `main` of `smol-platform`. Everything else, ArgoCD included, is a child `Application` there (app-of-apps). Root's own file is in that folder too, so root manages itself.
 - **Self-managed:** `gitops/apps/argocd.yaml` installs the same chart and version with the same `values.yaml` as `make argocd`, so the two can't drift.
 - **Destinations by role:** platform apps (ArgoCD, later Crossplane, Backstage) use `server: https://kubernetes.default.svc`, which is always ArgoCD's own cluster. Workload apps, ApplicationSets and team `AppProject`s use `destination.name: products`. Today `products` is a cluster Secret (chart `configs.clusterCredentials`) pointing at this cluster.
 - **Sync policy:** automated with `prune` and `selfHeal` on every app (O2).
@@ -46,6 +46,7 @@
 - Splitting clusters later means changing the `products` entry's `server` and credentials, not every app. That credential would be long-lived locally (a ServiceAccount token, against O6); on EKS, IAM-based auth instead. Where Crossplane runs, and how connection secrets reach a separate products cluster, needs its own ADR before that split.
 - The `products` Secret renames ArgoCD's `in-cluster` entry. `name: in-cluster` still resolved in a test, but that isn't documented, so platform apps don't rely on it.
 - If ArgoCD breaks itself, `make argocd` reinstalls from the same values; ArgoCD then adopts the release again.
+- Root managing itself (added after a repo URL change left the live root on a dead URL): a bad push to `root.yaml`, such as a wrong `repoURL` or `path`, can cut root off from the fix. Recovery is `make argocd`, which re-applies the file. Deleting `root.yaml` from git makes root prune itself; its children keep running (no finalizer).
 
 ## References
 
