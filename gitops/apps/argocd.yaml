@@ -1,0 +1,30 @@
+# ArgoCD manages itself (ADR-0002): same chart, version and values as `make argocd`.
+# No resources-finalizer: deleting this Application must not uninstall ArgoCD.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      # Must equal ARGOCD_CHART_VERSION in versions.env
+      targetRevision: 10.19.1
+      helm:
+        # Same release name as `make argocd`, so resource names and labels match
+        releaseName: argocd
+        valueFiles:
+          - $values/gitops/argocd/values.yaml
+    - repoURL: https://github.com/YArzumanyan/smol-platform.git
+      targetRevision: main
+      ref: values
+  destination:
+    # Platform app: ArgoCD's own cluster, by URL (`in-cluster` is renamed to `products`; see values.yaml)
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

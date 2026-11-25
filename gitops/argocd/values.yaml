@@ -1,0 +1,19 @@
+# Values for the argo/argo-cd chart. Used by both `make argocd` and gitops/apps/argocd.yaml (ADR-0002).
+# Chart defaults: https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
+
+# No SSO yet: Phase 1 uses the admin user over port-forward (see docs/security.md)
+dex:
+  enabled: false
+
+# Nothing sends notifications yet
+notifications:
+  enabled: false
+
+configs:
+  # Clusters by role (ADR-0002). Workload apps target `destination.name: products`, never a server URL.
+  # Today `products` is this cluster, so it renames ArgoCD's `in-cluster` entry; platform apps use
+  # `server: https://kubernetes.default.svc` instead. A separate cluster later changes only `server` and `config` here.
+  clusterCredentials:
+    products:
+      server: https://kubernetes.default.svc
+      config: {}

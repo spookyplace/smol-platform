@@ -11,3 +11,7 @@ Things that surprised me while building Smol, and what I learned.
 - **Floci needs the Docker socket only for container-backed services** (RDS, Lambda, ElastiCache, ECS, the web console). RDS runs real Postgres/MySQL containers, which lowers the charter's RDS-coverage risk. No socket until Phase 3 needs it.
 - **Floci's image ships its own healthcheck and has no curl/wget.** Overriding the healthcheck broke it; `compose up --wait` works with the built-in one.
 - **k3d expands `${VAR}` in its config unconditionally.** An unset `K3S_IMAGE` silently becomes k3d's default k3s version. `make cluster` refuses to run without it.
+
+## 2026-11-25: ArgoCD cluster names
+
+- **A cluster Secret for `https://kubernetes.default.svc` renames ArgoCD's `in-cluster` entry.** `argocd cluster list` then shows only the new name. An app with `name: in-cluster` still resolved in a test, but the docs don't promise that, so platform apps target the server URL.

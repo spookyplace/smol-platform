@@ -1,0 +1,21 @@
+# Root of the app-of-apps (ADR-0002). Applied once by `make argocd`; every file in gitops/apps/ is a child Application.
+# No resources-finalizer: deleting this Application leaves its children (and ArgoCD) running.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YArzumanyan/smol-platform.git
+    targetRevision: main
+    path: gitops/apps
+  destination:
+    # Platform app: ArgoCD's own cluster, by URL (`in-cluster` is renamed to `products`; see values.yaml)
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
