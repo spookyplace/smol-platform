@@ -23,3 +23,11 @@ Install each tool from its official docs. The required version, or the compatibi
 Node 25+ no longer bundles Corepack, so it is installed separately. Yarn itself is pinned by the Backstage repo. Cluster components (k3s, Floci, ArgoCD, Crossplane) are pinned exactly and installed by `make up`, not by hand.
 
 Check your setup with `make doctor`. It checks every rule, installs nothing, and exits non-zero if a tool needed now is missing or wrong. Tools for later phases are reported but never fail the run.
+
+## Repository settings
+
+Branch rules are kept as code in [`.github/rulesets/`](.github/rulesets/). To create one on a fresh repo (to change an existing one, use `PUT .../rulesets/<id>`):
+
+```bash
+gh api -X POST repos/{owner}/{repo}/rulesets --input .github/rulesets/protect-main.json
+```
