@@ -38,3 +38,8 @@ Things that surprised me while building Smol, and what I learned.
 - **The backstage chart and the `create-app` 1.57 template are incompatible out of the box.** The chart always sets `APP_CONFIG_backend_listen_port` (an object on the env layer); the template's `app-config.production.yaml` has `listen: ':7007'` (a string). Backstage won't merge an object over a string: `Invalid type in config for key 'backend.listen' … got string, wanted object`, crash on startup. Fix: object form (`listen: {port: 7007}`) in the image.
 - **My smoke test missed it** because it loaded only `app-config.yaml`. A real check loads the same config layers the deployment uses, including env (`loadConfig` from `@backstage/config-loader`; a hand-built `ConfigReader` didn't reproduce it).
 - **GHCR packages in an org are private by default**, unlike the first one under a personal account, and making one public needs the org's "Package creation: Public" setting first. Public is one-way.
+
+## 2026-11-25: Floci emulates EKS
+
+- **Floci 2.4.0 has an EKS API, contrary to what the project assumed.** Real mode (the default) starts one privileged k3s container per cluster through the Docker socket, with a working endpoint, IAM-authenticated access entries, Pod Identity injection and CloudWatch control-plane logs. Without the socket (our setup) clusters are metadata only. Addons and access policies are metadata, not enforced. The UI lists EKS as "running" because the API is enabled; `eks list-clusters` returns none.
+- **Not adopted yet.** It would let a composition create a real `products` cluster locally (O8 for clusters, ADR-0002's multi-cluster path), at the cost of privileged containers and the Docker socket (root on the host). Decide with the Phase 3 Docker-socket ADR.
