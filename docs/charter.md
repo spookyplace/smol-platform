@@ -8,7 +8,7 @@ A feature is in scope only if it serves one of Dana's jobs (§1.1) or meets an o
 
 ### 1.1 Dana, backend developer
 
-Works on `team-payments`, one of 6 product teams at a fictional 60-engineer company. The demo uses two teams, `team-payments` and `team-catalog`, the minimum needed to show O3. The golden-path template is Go, because a distroless `nonroot` image passes restricted Pod Security Standards with no workarounds.
+Works on `team-payments`, one of 6 product teams at a fictional 60-engineer company. The demo uses two teams, `team-payments` and `team-catalog`, the minimum needed to show O3. Dana and one `team-catalog` member are separate real GitHub accounts, so sign-in (O7) and cross-team denials are shown live. The golden-path template is Go, because a distroless `nonroot` image passes restricted Pod Security Standards with no workarounds.
 
 - **Knows:** Git, PRs, one backend language, basic Docker, SQL.
 - **Shouldn't need to know:** Kubernetes, Helm, ArgoCD, Crossplane, Kyverno, Istio, AWS IAM.
@@ -40,11 +40,43 @@ Dana writes zero Kubernetes manifests. The D1 and D3 targets get checked in Phas
 
 ## 2. Demo script
 
-_TODO: D1–D5 in order, then O2, O3, O5, O7 live. O8 isn't demoed._
+Target: ≤ 12 min video, one take per act, waits cut and timers shown on screen. Starts from a running `make up` (O1 shown as a time-lapse, not live).
+
+**Act 1: Dana (developer)**
+
+| # | Step | Shows | Traces to |
+|---|---|---|---|
+| 1 | Dana signs in with GitHub; sees her team's catalog | Real sign-in, ownership | O7 |
+| 2 | Create service → Go template → `payments-api` | Repo with CI, CODEOWNERS, branch protection; registration PR to `smol-platform` | D1, O6 |
+| 3 | CI goes green (Trivy, Cosign, SBOM); ArgoCD deploys; pod healthy in dev | Timer < 15 min | D1 |
+| 4 | Request a Postgres database from the portal; service connects | No cloud credentials; claim in own namespace | D2 |
+| 5 | Open a PR → preview URL → merge → preview gone | Timer < 5 min | D3 |
+| 6 | Entity page: dashboard and scorecard | Created automatically | D4 |
+| 7 | Push a change that runs as root → deploy blocked; portal shows policy + fix hint; fix → deployed | Admission, in Dana's words | D5, O5 |
+
+**Act 2: operator (platform team)**
+
+| # | Step | Shows | Traces to |
+|---|---|---|---|
+| 8 | `kubectl edit` a deployment → reverted | GitOps as the only write path | O2 |
+| 9 | Unsigned image → rejected; signed → admitted | `verifyImages` | O5 |
+| 10 | `team-catalog` user can't run payments' template or act on `payments-api` | Permission framework | O7 |
+| 11 | `team-catalog` app targeting `team-payments` → AppProject denies; cross-namespace request → denied | Tenant isolation | O3 |
+| 12 | One PR to the shared chart/policy → applies to every service | Change once | O4 |
 
 ## 3. Out of scope
 
-_TODO_
+| Out | Why |
+|---|---|
+| Production: HA control plane, multi-region, DR, backups beyond CNPG defaults | Laptop demo; documented as gaps in `security.md` |
+| Multi-cluster at runtime | Hub/spoke designed for (ADR-0002), one cluster built |
+| Real AWS in the demo | Optional Terraform module only (O8 not demoed) |
+| Templates other than Go | One golden path, done properly |
+| Frontend, data/ML, batch workloads | Not Dana's jobs (§1.1) |
+| Migrating or importing existing services | Greenfield only |
+| External secrets manager (Vault, ESO) | Crossplane connection secrets + GitHub App cover the demo; noted in `security.md` |
+| Cost reporting, FinOps | No real spend |
+| Custom Backstage theme/branding | No user value for the demo |
 
 ## 4. Phase "done" criteria
 
