@@ -59,3 +59,10 @@ Things that surprised me while building Smol, and what I learned.
 - **My pre-check was wrong.** I checked that flannel's plugins exist in `/bin` (they do, as the multi-call `cni` binary), not which directory containerd actually reads. Check the consumer's config, not the presence of files.
 - **A CNI chain is a cluster-wide single point of failure.** A broken chained plugin stops all pod creation, including the agent that would fix it. Worth a canary step for CNI changes on real clusters.
 - **istiod flips its validating webhooks from `Ignore` to `Fail` once ready.** `ignoreDifferences` on `.webhooks[].failurePolicy` + `RespectIgnoreDifferences=true` keeps the app Synced with no tug-of-war (checked: live `Fail`, git `Ignore`, app Synced).
+
+## 2026-11-27: Gateway and ambient enrolment
+
+- **A hard refresh of `root` doesn't refresh its children.** After a push, `argocd` stayed Synced on the previous commit for minutes: each app polls git on its own (~3 min). "Synced" means synced to the last revision the app fetched. Refresh the child apps, or (on a reachable cluster) use a GitHub webhook.
+- **Go CLIs don't resolve `*.localhost` in WSL, and a `Host` header doesn't save them.** `argocd login argocd.localhost:8080` fails with `no such host`; `--header "Host: argocd.localhost"` against `127.0.0.1:8080` gets Envoy's 404, because Go's net/http takes the host from `req.Host`, not the header. `argocd login --port-forward` works.
+- **Ambient enrolment doesn't restart pods, but it resets their open connections.** Labelling `backstage` kept both pod UIDs and restart counts, then Backstage logged `ECONNRESET` on its Postgres pool for ~4 s and reconnected, this time through ztunnel (`mutual_tls` in ztunnel metrics). "No restart needed" isn't "no impact".
+- **Non-mesh clients still reach enrolled pods.** The CNPG operator (`cnpg-system`, not enrolled) reaches Postgres' status port as plaintext inbound: the default is permissive. Requiring mTLS (`PeerAuthentication` STRICT) would cut the operator off unless it's enrolled too.

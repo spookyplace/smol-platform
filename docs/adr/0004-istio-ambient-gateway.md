@@ -72,11 +72,13 @@
 - No manual step on a clean machine; URLs are stable for OAuth callbacks.
 - **Unverified, test while building:**
   - GitHub accepts `http://backstage.localhost:8080/...` as an App callback URL.
+- **Verified (2026-11-27):**
   - The Windows browser reaches `*.localhost:8080` through WSL localhost forwarding.
-  - Go CLIs (argocd) resolving `*.localhost` in WSL. If not: `/etc/hosts` entry (workstation notes) or port-forward.
-  - istiod rewrites its webhook config at runtime (caBundle, failurePolicy); expect an `ignoreDifferences` entry.
+  - Go CLIs don't resolve `*.localhost` in WSL (`argocd login argocd.localhost:8080`: `no such host`), and a `Host` header override doesn't help (Go ignores it). Use `argocd login --port-forward --port-forward-namespace argocd --kube-context k3d-smol --plaintext`, or an `/etc/hosts` entry (workstation notes).
+  - istiod switches its validating webhooks' `failurePolicy` to `Fail` at runtime; the `istio` app ignores that field.
 - `*.localhost` also matches `<svc>.<team>.localhost` (wildcards are suffix matches). The more specific team listener wins, but a platform route could still claim a team hostname unless Istio implements Listener Isolation (Extended; unverified). Only platform namespaces can attach, so low risk; test with the first team listener.
 - Future default-deny NetworkPolicies must allow TCP 15008 (HBONE) and the kubelet-probe SNAT source `169.254.7.127/32` (and the IPv6 equivalent) for enrolled pods, or probes and mesh traffic fail.
+- Enrolling a namespace doesn't restart pods, but resets their open TCP connections (seen: Backstage's Postgres pool, `ECONNRESET` for ~4 s, then recovered). On a real cluster, enrol at a quiet time; apps need reconnect logic.
 - Removing Istio needs care: unlabel namespaces while ztunnel and CNI still run, or enrolled pods lose connectivity. `make down` deletes the whole cluster, so this only matters for in-place removal.
 - A ztunnel upgrade restarts the node proxy and drops that node's connections. Accepted locally; real clusters would roll nodes.
 - Two pinned lines to bump in step: Istio charts and the Gateway API tag. `check-pins` covers both.

@@ -33,6 +33,12 @@ spec:
     syncOptions:
       # The namespace usually exists already (`make backstage-secrets` creates it for the GitHub App Secret)
       - CreateNamespace=true
+    # Labels ArgoCD sets on the namespace (needs CreateNamespace=true), existing or not. Not a Namespace manifest:
+    # that would make the app own the namespace, and deleting the app would delete it with the database and Secret.
+    managedNamespaceMetadata:
+      labels:
+        # Istio ambient (ADR-0004): ztunnel gives every pod here L4 mTLS; running pods are enrolled without a restart
+        istio.io/dataplane-mode: ambient
     # On a fresh cluster, root creates this app and cloudnative-pg together, so the Cluster CRD may not exist yet.
     # Waves can't order sibling apps (ArgoCD doesn't assess Application health by default); retrying until it exists can.
     retry:
