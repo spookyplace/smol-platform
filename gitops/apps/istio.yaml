@@ -1,0 +1,92 @@
+# Istio in ambient mode (ADR-0004): CRDs + control plane (base, istiod) and node data plane (cni, ztunnel).
+# One app, four charts at one version: Istio allows the control plane one minor ahead of the data plane, never behind,
+# so the simplest safe rule is to bump all four together. Values are inline: a few keys per chart.
+# Charts nest defaults under `_internal_defaults_do_not_set`; top-level keys override them.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Every targetRevision here must equal ISTIO_VERSION in versions.env (`make check-pins`)
+    - repoURL: https://blob.istio.io/istio-release/charts
+      chart: base
+      targetRevision: 1.32.0
+      helm:
+        releaseName: istio-base
+    - repoURL: https://blob.istio.io/istio-release/charts
+      chart: istiod
+      targetRevision: 1.32.0
+      helm:
+        releaseName: istiod
+        valuesObject:
+          profile: ambient
+          global:
+            platform: k3s
+          # One replica locally; no HPA object
+          autoscaleEnabled: false
+          # Chart default 500m / 2Gi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+    - repoURL: https://blob.istio.io/istio-release/charts
+      chart: cni
+      targetRevision: 1.32.0
+      helm:
+        releaseName: istio-cni
+        valuesObject:
+          profile: ambient
+          global:
+            # k3s, not k3d: Istio's k3d profile sets cniBinDir /bin, but k3s 1.36 containerd reads plugins from
+            # /var/lib/rancher/k3s/data/cni (agent/etc/containerd/config.toml). k3d nodes are k3s. See decision log.
+            platform: k3s
+          # Chart default 100m / 100Mi
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+    - repoURL: https://blob.istio.io/istio-release/charts
+      chart: ztunnel
+      targetRevision: 1.32.0
+      helm:
+        releaseName: ztunnel
+        valuesObject:
+          profile: ambient
+          global:
+            platform: k3s
+          # Chart default 200m / 512Mi per node
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+  destination:
+    # Platform app: ArgoCD's own cluster (ADR-0002)
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  # istiod switches its validating webhooks from Ignore to Fail once it can serve them (the chart says so).
+  # Without this, selfHeal would set Ignore again and the two controllers would fight.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.failurePolicy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # DestinationRule's CRD is 404 KiB, over the client-side apply annotation limit
+      - ServerSideApply=true
+      # Leave ignored fields alone on sync too, not only in the diff
+      - RespectIgnoreDifferences=true
+    # cni/ztunnel can't start before istiod's CRDs and webhook exist on a cold start; retry absorbs it
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

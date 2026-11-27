@@ -15,7 +15,7 @@ KUBE_CONTEXT := k3d-$(CLUSTER)
 
 FLOCI_COMPOSE := docker compose -f floci/compose.yaml
 # Pins repeated in gitops/apps/<app>.yaml, because ArgoCD can't read versions.env. Pairs of app:VARIABLE.
-PINNED_APPS := argocd:ARGOCD_CHART_VERSION cloudnative-pg:CNPG_CHART_VERSION backstage:BACKSTAGE_CHART_VERSION gateway-api:GATEWAY_API_VERSION
+PINNED_APPS := argocd:ARGOCD_CHART_VERSION cloudnative-pg:CNPG_CHART_VERSION backstage:BACKSTAGE_CHART_VERSION gateway-api:GATEWAY_API_VERSION istio:ISTIO_VERSION
 pin_app = $(word 1,$(subst :, ,$1))
 pin_var = $(word 2,$(subst :, ,$1))
 ARGOCD_CHART := argo-cd --repo https://argoproj.github.io/argo-helm --version $(ARGOCD_CHART_VERSION)
@@ -51,10 +51,14 @@ floci: cluster ## Start Floci on the cluster's network and wait until healthy
 floci-down: ## Stop and remove Floci (state is in memory, so it is lost)
 	$(FLOCI_COMPOSE) down -v
 
+# Every targetRevision in a pinned app must be the pin, except `main` (this repo's own sources),
+# and at least one must be the pin. Catches a half-done bump in multi-source apps (istio has four charts).
 check-pins: ## Check pinned versions in gitops/apps/ match versions.env
 	@$(foreach p,$(PINNED_APPS),\
-	  grep -q 'targetRevision: $($(call pin_var,$p))$$' gitops/apps/$(call pin_app,$p).yaml || \
-	  { echo "gitops/apps/$(call pin_app,$p).yaml: pinned version is not $(call pin_var,$p) ($($(call pin_var,$p)))"; exit 1; };)
+	  f=gitops/apps/$(call pin_app,$p).yaml; v='$($(call pin_var,$p))'; \
+	  grep -q "targetRevision: $$v$$" $$f && \
+	  ! grep 'targetRevision:' $$f | grep -v -e 'targetRevision: main$$' -e "targetRevision: $$v$$" -q || \
+	  { echo "$$f: a targetRevision is not $(call pin_var,$p) ($$v)"; exit 1; };)
 
 argocd: cluster check-pins ## Install ArgoCD (Helm) and apply the root app; safe to re-run (ADR-0002)
 	@helm show chart $(ARGOCD_CHART) | grep -qx 'appVersion: v$(ARGOCD_VERSION)' || \

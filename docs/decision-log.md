@@ -50,3 +50,12 @@ Things that surprised me while building Smol, and what I learned.
 - **Istio's docs install Gateway API CRDs one minor behind upstream, from the experimental channel.** Istio 1.32 is built against v1.6.1 (`go.mod`) while upstream is at v1.7.0. Pinned v1.6.3 standard (ADR-0004).
 - **The standard CRD bundle ships an admission policy.** `safe-upgrades.gateway.networking.k8s.io` (a ValidatingAdmissionPolicy, CEL in the API server, no webhook) rejects experimental CRDs over standard ones and bundles older than v1.5. Running Istio's documented `experimental-install.yaml` on this cluster later would be denied.
 - **Istio's chart defaults assume a real cluster:** istiod requests 500m CPU / 2 GiB, ztunnel 200m / 512 MiB per node.
+
+## 2026-11-27: Istio's k3d profile broke every new pod
+
+- **`global.platform: k3d` (from Istio's docs) points `cniBinDir` at `/bin`; k3s 1.36 containerd reads plugins from `/var/lib/rancher/k3s/data/cni`** (`bin_dirs` in `agent/etc/containerd/config.toml`). istio-cni copied its binary to `/bin`, then chained itself into `10-flannel.conflist`. From then on every new pod on every node failed: `failed to find plugin "istio-cni" in path [/var/lib/rancher/k3s/data/cni]`. Running pods were unaffected.
+- **It deadlocked itself.** The istio-cni agents aren't host-network, so their own replacement pods needed the missing plugin, and the old agents couldn't be killed either (`KillPodSandbox` calls the plugin too). Recovery on the local nodes: copy `/bin/istio-cni` into `data/cni` on each node; the DaemonSet then rolled.
+- **Fix: `global.platform: k3s`.** Istio's k3s profile has the right path; the only difference between the two profiles is `cniBinDir`. Proven on a fresh cluster: Istio ready in 45 s, 0 sandbox failures.
+- **My pre-check was wrong.** I checked that flannel's plugins exist in `/bin` (they do, as the multi-call `cni` binary), not which directory containerd actually reads. Check the consumer's config, not the presence of files.
+- **A CNI chain is a cluster-wide single point of failure.** A broken chained plugin stops all pod creation, including the agent that would fix it. Worth a canary step for CNI changes on real clusters.
+- **istiod flips its validating webhooks from `Ignore` to `Fail` once ready.** `ignoreDifferences` on `.webhooks[].failurePolicy` + `RespectIgnoreDifferences=true` keeps the app Synced with no tug-of-war (checked: live `Fail`, git `Ignore`, app Synced).

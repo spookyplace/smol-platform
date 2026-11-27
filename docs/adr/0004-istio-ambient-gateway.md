@@ -57,7 +57,7 @@
 - **Gateway API CRDs:** `v1.6.3`, standard channel. **Pin-policy exception:** the policy picks v1.7.0, but Istio 1.32 is built and documented against v1.6.1 (`go.mod`, release-1.32 docs). Rule: compatibility with the consumer wins; take the newest patch of the supported minor. Move to 1.7 with the Istio minor that supports it.
 - **Apps (all platform apps, `kubernetes.default.svc`):**
   - `gateway-api`: directory source `kubernetes-sigs/gateway-api` at tag `v1.6.3`, path `config/crd/standard`, ServerSideApply (CRDs exceed the client-side annotation limit).
-  - `istio`: multi-source app with `base`, `istiod`, `cni`, `ztunnel` at one version, `profile: ambient`, `global.platform: k3d` (sets k3s CNI paths). Istio's `base` chart manages its CRDs as templates (`enableCRDTemplates: true`), so they upgrade with the chart.
+  - `istio`: multi-source app with `base`, `istiod`, `cni`, `ztunnel` at one version, `profile: ambient`, `global.platform: k3s` (sets k3s CNI paths). Not `k3d`, which the docs suggest: its profile has a stale `cniBinDir` (see decision log, 2026-11-27). Istio's `base` chart manages its CRDs as templates (`enableCRDTemplates: true`), so they upgrade with the chart.
   - `ingress`: `gitops/ingress/`: namespace `istio-ingress`, the shared `Gateway` (class `istio`; istiod deploys it as a Deployment + LoadBalancer Service that k3s ServiceLB binds to ports 80/443), and HTTPRoutes for platform UIs.
   - Ordering between apps by retry with backoff, as for Backstage (ADR-0003): waves can't order sibling apps.
 - **Resources:** explicit, smaller requests (chart defaults: istiod 500m/2Gi, ztunnel 200m/512Mi per node). Measure and record actual usage.
@@ -71,7 +71,6 @@
 
 - No manual step on a clean machine; URLs are stable for OAuth callbacks.
 - **Unverified, test while building:**
-  - The k3d CNI paths from Istio's `k3d` profile (`/var/lib/rancher/k3s/agent/etc/cni/net.d`, `/bin`) match k3s 1.36 nodes.
   - GitHub accepts `http://backstage.localhost:8080/...` as an App callback URL.
   - The Windows browser reaches `*.localhost:8080` through WSL localhost forwarding.
   - Go CLIs (argocd) resolving `*.localhost` in WSL. If not: `/etc/hosts` entry (workstation notes) or port-forward.
