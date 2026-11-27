@@ -1,0 +1,29 @@
+# HTTPRoutes for platform UIs (ADR-0004). Each route lives in its backend's namespace: the Gateway's `platform`
+# listener admits routes by namespace, and a backendRef in the same namespace needs no ReferenceGrant.
+# Kept here rather than in each app's chart so all platform edge config is reviewed in one place.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  parentRefs:
+    - {name: smol, namespace: istio-ingress, sectionName: platform}
+  hostnames: [backstage.localhost]
+  rules:
+    - backendRefs:
+        - {name: backstage, port: 7007}
+---
+# ArgoCD serves plain HTTP (`server.insecure`); the UI's gRPC-web runs over HTTP/1.1, so one HTTPRoute is enough.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  parentRefs:
+    - {name: smol, namespace: istio-ingress, sectionName: platform}
+  hostnames: [argocd.localhost]
+  rules:
+    - backendRefs:
+        - {name: argocd-server, port: 80}

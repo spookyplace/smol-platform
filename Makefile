@@ -25,9 +25,9 @@ help: ## Show available targets
 
 up: doctor floci argocd backstage-secrets ## Bring up everything: checks, cluster, Floci, ArgoCD, secrets (safe to re-run)
 	@echo
-	@echo "Smol is up. ArgoCD UI:"
-	@echo "  kubectl --context $(KUBE_CONTEXT) -n argocd port-forward svc/argocd-server 8081:443"
-	@echo "  https://localhost:8081  user: admin  password: make argocd-password"
+	@echo "Smol is up (apps take a few minutes to sync):"
+	@echo "  Backstage  http://backstage.localhost:8080"
+	@echo "  ArgoCD     http://argocd.localhost:8080  user: admin  password: make argocd-password"
 
 down: floci-down cluster-down ## Remove everything (Floci first: it is attached to the cluster's network)
 

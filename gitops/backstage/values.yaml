@@ -56,12 +56,12 @@ backstage:
   appConfig:
     app:
       title: Smol
-      # Phase 1: reached through kubectl port-forward (Istio Gateway in Phase 2)
-      baseUrl: http://localhost:7007
+      # Through the Istio Gateway (ADR-0004); port-forward to 7007 no longer matches baseUrl
+      baseUrl: http://backstage.localhost:8080
     organization:
       name: Smol
     backend:
-      baseUrl: http://localhost:7007
+      baseUrl: http://backstage.localhost:8080
       database:
         # One database, one schema per plugin: the `backstage` role needs no CREATEDB
         pluginDivisionMode: schema
@@ -85,7 +85,7 @@ backstage:
     auth:
       providers:
         guest:
-          # Phase 1 only (ADR-0003): local cluster, port-forward access. Replaced by GitHub sign-in in Phase 2 (O7).
+          # Phase 1 only (ADR-0003): local cluster, loopback access only. Replaced by GitHub sign-in in Phase 2 (O7).
           dangerouslyAllowOutsideDevelopment: true
     catalog:
       # Replaces the image's example locations. Read through the GitHub App.
