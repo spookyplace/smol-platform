@@ -1,0 +1,31 @@
+# The shared ingress Gateway (ADR-0004). istiod sees gatewayClassName `istio` and deploys `smol-istio`
+# (Deployment + Service) in this namespace; k3s ServiceLB binds the Service's ports on every node, and the k3d
+# load balancer maps 127.0.0.1:8080 to port 80.
+# One listener per audience. A route attaches only to listeners whose allowedRoutes admit its namespace,
+# so tenant isolation of hostnames is enforced here, not by a later policy engine (O3).
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: smol
+  namespace: istio-ingress
+spec:
+  gatewayClassName: istio
+  listeners:
+    # Platform UIs: backstage.localhost, argocd.localhost (grafana later)
+    - name: platform
+      protocol: HTTP
+      port: 80
+      hostname: "*.localhost"
+      allowedRoutes:
+        kinds:
+          - kind: HTTPRoute
+        namespaces:
+          from: Selector
+          selector:
+            # kubernetes.io/metadata.name is set by the API server and can't be changed, so no namespace can label
+            # its way onto this listener. Add a namespace here when a platform app gets a route.
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values: [argocd, backstage]
+    # Team listeners (`*.<team>.localhost`) come with team namespaces in Phase 2.

@@ -1,0 +1,29 @@
+# Ingress (ADR-0004): the shared Istio Gateway and, later, HTTPRoutes for platform UIs. Plain manifests.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/spookyplace/smol-platform.git
+    targetRevision: main
+    path: gitops/ingress
+  destination:
+    # Platform app: ArgoCD's own cluster (ADR-0002)
+    server: https://kubernetes.default.svc
+    namespace: istio-ingress
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    # On a cold start the Gateway CRD (gateway-api app) and the `istio` GatewayClass (istiod) may not exist yet
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

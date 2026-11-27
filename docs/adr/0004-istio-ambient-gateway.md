@@ -75,6 +75,7 @@
   - The Windows browser reaches `*.localhost:8080` through WSL localhost forwarding.
   - Go CLIs (argocd) resolving `*.localhost` in WSL. If not: `/etc/hosts` entry (workstation notes) or port-forward.
   - istiod rewrites its webhook config at runtime (caBundle, failurePolicy); expect an `ignoreDifferences` entry.
+- `*.localhost` also matches `<svc>.<team>.localhost` (wildcards are suffix matches). The more specific team listener wins, but a platform route could still claim a team hostname unless Istio implements Listener Isolation (Extended; unverified). Only platform namespaces can attach, so low risk; test with the first team listener.
 - Future default-deny NetworkPolicies must allow TCP 15008 (HBONE) and the kubelet-probe SNAT source `169.254.7.127/32` (and the IPv6 equivalent) for enrolled pods, or probes and mesh traffic fail.
 - Removing Istio needs care: unlabel namespaces while ztunnel and CNI still run, or enrolled pods lose connectivity. `make down` deletes the whole cluster, so this only matters for in-place removal.
 - A ztunnel upgrade restarts the node proxy and drops that node's connections. Accepted locally; real clusters would roll nodes.
