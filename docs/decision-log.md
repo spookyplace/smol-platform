@@ -43,3 +43,10 @@ Things that surprised me while building Smol, and what I learned.
 
 - **Floci 2.4.0 has an EKS API, contrary to what the project assumed.** Real mode (the default) starts one privileged k3s container per cluster through the Docker socket, with a working endpoint, IAM-authenticated access entries, Pod Identity injection and CloudWatch control-plane logs. Without the socket (our setup) clusters are metadata only. Addons and access policies are metadata, not enforced. The UI lists EKS as "running" because the API is enabled; `eks list-clusters` returns none.
 - **Not adopted yet.** It would let a composition create a real `products` cluster locally (O8 for clusters, ADR-0002's multi-cluster path), at the cost of privileged containers and the Docker socket (root on the host). Decide with the Phase 3 Docker-socket ADR.
+
+## 2026-11-27: Istio and Gateway API versions
+
+- **Istio's newest release isn't on its old chart repo.** `istio-release.storage.googleapis.com/charts` stops at 1.31; 1.32 is only on `blob.istio.io/istio-release/charts`, the URL the docs give.
+- **Istio's docs install Gateway API CRDs one minor behind upstream, from the experimental channel.** Istio 1.32 is built against v1.6.1 (`go.mod`) while upstream is at v1.7.0. Pinned v1.6.3 standard (ADR-0004).
+- **The standard CRD bundle ships an admission policy.** `safe-upgrades.gateway.networking.k8s.io` (a ValidatingAdmissionPolicy, CEL in the API server, no webhook) rejects experimental CRDs over standard ones and bundles older than v1.5. Running Istio's documented `experimental-install.yaml` on this cluster later would be denied.
+- **Istio's chart defaults assume a real cluster:** istiod requests 500m CPU / 2 GiB, ztunnel 200m / 512 MiB per node.
