@@ -1,0 +1,25 @@
+# Gateway API CRDs, standard channel (ADR-0004). Istio's Gateway and waypoints are built on them.
+# Upstream ships plain YAML per release, not a chart, so ArgoCD reads the release tag directly.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gateway-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kubernetes-sigs/gateway-api
+    # Must equal GATEWAY_API_VERSION in versions.env
+    targetRevision: v1.6.3
+    path: config/crd/standard
+  destination:
+    # Platform app: ArgoCD's own cluster (ADR-0002). CRDs are cluster-scoped; no namespace needed.
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      # CRDs are never pruned: deleting one deletes every Gateway/HTTPRoute in the cluster.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      # Upstream installs with `kubectl apply --server-side`; HTTPRoute's CRD exceeds the client-side annotation limit.
+      - ServerSideApply=true
